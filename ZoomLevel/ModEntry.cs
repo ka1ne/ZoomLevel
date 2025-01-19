@@ -1,4 +1,5 @@
 ﻿using System;
+using Microsoft.Xna.Framework.Input;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewModdingAPI.Utilities;
@@ -29,6 +30,9 @@ namespace ZoomLevel
             helper.Events.GameLoop.GameLaunched += this.Events_GameLoop_GameLaunched;
             helper.Events.Input.ButtonPressed += this.Events_Input_ButtonPressed;
             helper.Events.Input.ButtonsChanged += this.Events_Input_ButtonChanged;
+            helper.Events.Input.MouseWheelScrolled += this.Events_Input_MouseWheelScrolled;
+            helper.Events.Input.ButtonPressed += this.Events_Input_ButtonPressed; // Ensure ButtonPressed is called
+
 
             //On area change and on load save
             helper.Events.Player.Warped += this.Events_Player_Warped;
@@ -41,6 +45,37 @@ namespace ZoomLevel
             helper.ConsoleCommands.Add(Helper.Translation.Get("consoleCommands.resetUIAndZoom.name"), Helper.Translation.Get("consoleCommands.resetUIAndZoom.description"), this.ConsoleFunctionsList);
             helper.ConsoleCommands.Add(Helper.Translation.Get("consoleCommands.resetUI.name"), Helper.Translation.Get("consoleCommands.resetUI.description"), this.ConsoleFunctionsList);
             helper.ConsoleCommands.Add(Helper.Translation.Get("consoleCommands.resetZoom.name"), Helper.Translation.Get("consoleCommands.resetZoom.description"), this.ConsoleFunctionsList);
+
+            helper.Events.Input.ButtonPressed += OnButtonPressed;
+            helper.Events.Input.MouseWheelScrolled += OnMouseWheelScrolled;
+        }
+
+        private void Events_Input_MouseWheelScrolled(object? sender, MouseWheelScrolledEventArgs e)
+        {
+            if (!Context.IsWorldReady || (!Context.IsPlayerFree && !configsForTheMod.ZoomAndUIControlEverywhere)) return;
+
+            // Check if the Control key is held down
+            if (Helper.Input.IsDown(SButton.LeftControl) || Helper.Input.IsDown(SButton.RightControl))
+            {
+                if (e.Delta > 0)
+                {
+                    ChangeZoomLevel(configsForTheMod.ZoomOrUILevelIncreaseValue);
+                }
+                else if (e.Delta < 0)
+                {
+                    ChangeZoomLevel(configsForTheMod.ZoomOrUILevelDecreaseValue);
+                }
+
+                // Suppress the normal mouse wheel input
+                SuppressMouseWheelEvent(e);
+            }
+        }
+
+        private void SuppressMouseWheelEvent(MouseWheelScrolledEventArgs e)
+        {
+            e.
+            // Suppress the event so it doesn't trigger the normal mouse wheel behavior
+            Helper.Input.Suppress(e.OldValue - e.NewState.ScrollWheelValue > 0 ? SButton.MouseWheelUp : SButton.MouseWheelDown);
         }
 
         private void Events_GameLoop_GameLaunched(object? sender, GameLaunchedEventArgs e)
@@ -507,6 +542,14 @@ namespace ZoomLevel
 
                 UpdateZoomLevel(zoomLevelValue);
                 this.Monitor.Log(Helper.Translation.Get("consoleMessages.resetZoom.message", new { value = currentZoomLevel.ToString() }), LogLevel.Info);
+            }
+        }
+
+        private void OnMouseWheelScrolled(object sender, MouseWheelScrolledEventArgs e)
+        {
+            if (Game1.input.GetKeyboardState().IsKeyDown(this.Config.ModifierKey))
+            {
+                e.Cancel = true;
             }
         }
     }
